@@ -19,3 +19,8 @@ _tail_restore.py
 
 # 자동 백업
 .multicode-backups/
+
+# 빌드 산출물 (PyPI 배포)
+dist/
+build/
+*.egg-info/

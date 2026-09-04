@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ssh-file-explorer"
+version = "1.0.0"
+description = "SSH로 접속한 디바이스에서 실행하면 로컬 브라우저로 파일을 탐색·편집·업로드·다운로드하는 단일 파일 웹 파일 탐색기"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["ssh", "file-explorer", "web", "browser", "remote", "files"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: File Management",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/uptodatelabs/ssh-file-explorer"
+Repository = "https://github.com/uptodatelabs/ssh-file-explorer"
+
+[project.scripts]
+explorer = "explorer:main"
+
+[tool.setuptools]
+py-modules = ["explorer"]
