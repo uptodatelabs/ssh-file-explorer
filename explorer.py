@@ -4,7 +4,13 @@
 explorer.py -- SSH로 접속해서 실행하면, 브라우저용 웹 파일 탐색기를 띄워주는 단일 파일 도구.
 
 사용법 (디바이스에서):
-    python3 explorer.py [rootdir] [--port 8080] [--host 0.0.0.0] [--no-token]
+    python3 explorer.py [rootdir] [--port 8080] [--host 127.0.0.1] [--no-token]
+
+보안(기본):
+    - 루프백(127.0.0.1)에만 바인딩되므로 원격 접근은 반드시 SSH 터널로:
+          ssh -L 8080:127.0.0.1:8080 user@device
+      후 브라우저에서 http://localhost:8080/   (트래픽이 SSH로 암호화됨)
+    - LAN에 직접 노출하려면 명시적으로 --host 0.0.0.0 (주의: 토큰은 평문 HTTP로 전송)
 
 의존성: Python 3.8+ 표준 라이브러리만 사용 (pip install 불필요)
 
@@ -22,6 +28,7 @@ API 계약 (test_explorer.py 가 검증한다):
 """
 
 import argparse
+import io
 import json
 import mimetypes
 import os
@@ -36,11 +43,16 @@ from urllib.parse import urlparse, parse_qs, quote
 
 # ------------------------------------------------------------------ 기본 설정
 DEFAULT_PORT = 8080
-DEFAULT_HOST = "0.0.0.0"
+DEFAULT_HOST = "127.0.0.1"   # 기본은 루프백 전용 -> 원격 접근은 SSH 터널(ssh -L)로만
 MAX_READ = 2 * 1024 * 1024      # 에디터로 열 수 있는 최대 파일 크기
 MAX_BODY = 200 * 1024 * 1024    # 업로드 본문 최대 크기
+MAX_FILES = 100                 # 한 요청당 업로드 파일 수 상한
 SEARCH_LIMIT = 500
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".svn", ".hg"}
+# 업로드 차단 확장자 (실행 가능/스크립트 계열)
+BLOCKED_EXT = {".exe", ".dll", ".bat", ".cmd", ".com", ".scr", ".ps1", ".vbs",
+               ".pyc", ".pyo", ".msi", ".apk", ".jar", ".sh", ".bash"}
+LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 TEXT_EXT = {
     ".txt", ".md", ".py", ".js", ".ts", ".jsx", ".tsx", ".json", ".yaml", ".yml",
@@ -61,6 +73,21 @@ def lan_ip():
         return "127.0.0.1"
     finally:
         s.close()
+
+
+def _is_loopback(host):
+    """host 가 루프백(본인 머신 전용) 주소인지 판정."""
+    if not host:
+        return False
+    h = host.strip().lower()
+    if h in ("localhost", "127.0.0.1", "::1"):
+        return True
+    if h in ("0.0.0.0", "::"):
+        return False
+    # IP 문자열이면 루프백 대역(127.x.x.x) 검사
+    if re.match(r"^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$", h):
+        return True
+    return False
 
 
 def is_text(path):
@@ -319,6 +346,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
         for k, v in (extra or {}).items():
             self.send_header(k, v)
         self.end_headers()
@@ -646,8 +676,6 @@ class Handler(BaseHTTPRequestHandler):
                 fields[field] = data.decode("utf-8", "replace")
         return files, fields
 
-
-# __PART4__
 
 # ------------------------------------------------------------------ 서버 팩토리 / 메인
 def make_server(host=DEFAULT_HOST, port=DEFAULT_PORT, root=".", token=""):

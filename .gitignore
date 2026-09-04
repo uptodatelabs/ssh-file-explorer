@@ -8,3 +8,14 @@ _p2.py
 _p3.py
 hello.txt
 hello2.txt
+
+# 복구/보조 스크립트
+_append_tail.py
+_fix_regex.py
+_fix_tail.py
+_rebuild.py
+_tail.py
+_tail_restore.py
+
+# 자동 백업
+.multicode-backups/
